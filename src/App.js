@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import MoviesList from "./components/MoviesList";
 import "./App.css";
@@ -9,38 +9,45 @@ function App() {
   const [error, setError] = useState(null);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  async function fetchMoviesHandler() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch("https://swapi.dev/api/film/");
+  const fetchMoviesHandler = useCallback(
+    async function () {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("https://swapi.dev/api/films/");
 
-      if (!response.ok) {
-        throw new Error("Something Went Wrong! Retrying...");
+        if (!response.ok) {
+          throw new Error("Something Went Wrong! Retrying...");
+        }
+
+        const data = await response.json();
+
+        const transformedMovies = data.results.map((movieData) => {
+          return {
+            id: movieData.episode_id,
+            title: movieData.title,
+            openingText: movieData.opening_crawl,
+            releaseDate: movieData.release_date,
+          };
+        });
+        setMovies(transformedMovies);
+        setIsLoading(false);
+      } catch (error) {
+        setError(error.message);
+        console.error(error);
+        if (!isRetrying) {
+          setIsRetrying(true);
+          setTimeout(fetchMoviesHandler, 5000);
+        }
       }
-
-      const data = await response.json();
-
-      const transformedMovies = data.results.map((movieData) => {
-        return {
-          id: movieData.episode_id,
-          title: movieData.title,
-          openingText: movieData.opening_crawl,
-          releaseDate: movieData.release_date,
-        };
-      });
-      setMovies(transformedMovies);
       setIsLoading(false);
-    } catch (error) {
-      setError(error.message);
-      console.error(error);
-      if (!isRetrying) {
-        setIsRetrying(true);
-        setTimeout(fetchMoviesHandler, 5000);
-      }
-    }
-    setIsLoading(false);
-  }
+    },
+    [isRetrying]
+  );
+
+  useEffect(() => {
+    fetchMoviesHandler();
+  }, [fetchMoviesHandler]);
 
   function cancelRetryHandler() {
     setIsRetrying(false);
